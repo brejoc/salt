@@ -27,7 +27,7 @@ from functools import partial
 # Import salt libs
 import salt.config as config
 import salt.defaults.exitcodes
-import salt.log.setup as log
+import salt.log.setup as salt_log
 import salt.syspaths as syspaths
 import salt.version as version
 import salt.utils.args
@@ -52,6 +52,9 @@ def _sorted(mixins_or_funcs):
     return sorted(
         mixins_or_funcs, key=lambda mf: getattr(mf, '_mixin_prio_', 1000)
     )
+
+
+log = logging.getLogger(__name__)
 
 
 class MixInMeta(type):
@@ -186,7 +189,7 @@ class OptionParser(optparse.OptionParser, object):
         # This logging handler will be removed once the proper console or
         # logfile logging is setup.
         temp_log_level = getattr(self.options, 'log_level', None)
-        log.setup_temp_logger(
+        salt_log.setup_temp_logger(
             'error' if temp_log_level is None else temp_log_level
         )
 
@@ -203,7 +206,7 @@ class OptionParser(optparse.OptionParser, object):
             try:
                 process_option_func()
             except Exception as err:  # pylint: disable=broad-except
-                logging.getLogger(__name__).exception(err)
+                log.exception(err)
                 self.error(
                     'Error while processing {0}: {1}'.format(
                         process_option_func, traceback.format_exc(err)
@@ -215,7 +218,7 @@ class OptionParser(optparse.OptionParser, object):
             try:
                 mixin_after_parsed_func(self)
             except Exception as err:  # pylint: disable=broad-except
-                logging.getLogger(__name__).exception(err)
+                log.exception(err)
                 self.error(
                     'Error while processing {0}: {1}'.format(
                         mixin_after_parsed_func, traceback.format_exc(err)
@@ -223,7 +226,7 @@ class OptionParser(optparse.OptionParser, object):
                 )
 
         if self.config.get('conf_file', None) is not None:  # pylint: disable=no-member
-            logging.getLogger(__name__).debug(
+            log.debug(
                 'Configuration file path: {0}'.format(
                     self.config['conf_file']  # pylint: disable=no-member
                 )
@@ -257,9 +260,8 @@ class OptionParser(optparse.OptionParser, object):
             try:
                 mixin_before_exit_func(self)
             except Exception as err:  # pylint: disable=broad-except
-                logger = logging.getLogger(__name__)
-                logger.exception(err)
-                logger.error(
+                log.exception(err)
+                log.error(
                     'Error while processing {0}: {1}'.format(
                         mixin_before_exit_func, traceback.format_exc(err)
                     )
@@ -403,7 +405,7 @@ class SaltfileMixIn(six.with_metaclass(MixInMeta, object)):
         self.options.saltfile = os.path.abspath(self.options.saltfile)
 
         # Make sure we let the user know that we will be loading a Saltfile
-        logging.getLogger(__name__).info(
+        log.info(
             'Loading Saltfile from \'{0}\''.format(self.options.saltfile)
         )
 
@@ -523,7 +525,7 @@ class ConfigDirMixIn(six.with_metaclass(MixInMeta, object)):
         config_dir = os.environ.get(self._default_config_dir_env_var_, None)
         if not config_dir:
             config_dir = self._default_config_dir_
-            logging.getLogger(__name__).debug('SYSPATHS setup as: {0}'.format(syspaths.CONFIG_DIR))
+            log.debug('SYSPATHS setup as: {0}'.format(syspaths.CONFIG_DIR))
         self.add_option(
             '-c', '--config-dir', default=config_dir,
             help=('Pass in an alternative configuration directory. Default: '
@@ -588,9 +590,9 @@ class LogLevelMixIn(six.with_metaclass(MixInMeta, object)):
             group.add_option(
                 '-l', '--log-level',
                 dest=self._loglevel_config_setting_name_,
-                choices=list(log.LOG_LEVELS),
+                choices=list(salt_log.LOG_LEVELS),
                 help='Console logging log level. One of {0}. Default: \'{1}\'.'.format(
-                     ', '.join([repr(l) for l in log.SORTED_LEVEL_NAMES]),
+                     ', '.join([repr(l) for l in salt_log.SORTED_LEVEL_NAMES]),
                      self._default_logging_level_
                 )
             )
@@ -607,9 +609,9 @@ class LogLevelMixIn(six.with_metaclass(MixInMeta, object)):
         group.add_option(
             '--log-file-level',
             dest=self._logfile_loglevel_config_setting_name_,
-            choices=list(log.LOG_LEVELS),
+            choices=list(salt_log.LOG_LEVELS),
             help='Logfile logging log level. One of {0}. Default: \'{1}\'.'.format(
-                 ', '.join([repr(l) for l in log.SORTED_LEVEL_NAMES]),
+                 ', '.join([repr(l) for l in salt_log.SORTED_LEVEL_NAMES]),
                  self._default_logging_level_
             )
         )
@@ -792,7 +794,7 @@ class LogLevelMixIn(six.with_metaclass(MixInMeta, object)):
                     logfile_basename = os.path.basename(
                         self._default_logging_logfile_
                     )
-                    logging.getLogger(__name__).debug(
+                    log.debug(
                         'The user \'{0}\' is not allowed to write to \'{1}\'. '
                         'The log file will be stored in '
                         '\'~/.salt/\'{2}\'.log\''.format(
@@ -815,10 +817,10 @@ class LogLevelMixIn(six.with_metaclass(MixInMeta, object)):
             # Not supported on platforms other than Windows.
             # Other platforms may use an external tool such as 'logrotate'
             if log_rotate_max_bytes != 0:
-                logging.getLogger(__name__).warning('\'log_rotate_max_bytes\' is only supported on Windows')
+                log.warning('\'log_rotate_max_bytes\' is only supported on Windows')
                 log_rotate_max_bytes = 0
             if log_rotate_backup_count != 0:
-                logging.getLogger(__name__).warning('\'log_rotate_backup_count\' is only supported on Windows')
+                log.warning('\'log_rotate_backup_count\' is only supported on Windows')
                 log_rotate_backup_count = 0
 
         # Save the settings back to the configuration
@@ -842,7 +844,7 @@ class LogLevelMixIn(six.with_metaclass(MixInMeta, object)):
         log_rotate_max_bytes = self.config['log_rotate_max_bytes']
         log_rotate_backup_count = self.config['log_rotate_backup_count']
 
-        log.setup_logfile_logger(
+        salt_log.setup_logfile_logger(
             logfile,
             loglevel,
             log_format=log_file_fmt,
@@ -851,21 +853,21 @@ class LogLevelMixIn(six.with_metaclass(MixInMeta, object)):
             backup_count=log_rotate_backup_count
         )
         for name, level in six.iteritems(self.config.get('log_granular_levels', {})):
-            log.set_logger_level(name, level)
+            salt_log.set_logger_level(name, level)
 
     def __setup_extended_logging(self, *args):  # pylint: disable=unused-argument
         if salt.utils.platform.is_windows() and self._setup_mp_logging_listener_:
             # On Windows when using a logging listener, all extended logging
             # will go through the logging listener.
             return
-        log.setup_extended_logging(self.config)
+        salt_log.setup_extended_logging(self.config)
 
     def _get_mp_logging_listener_queue(self):
-        return log.get_multiprocessing_logging_queue()
+        return salt_log.get_multiprocessing_logging_queue()
 
     def _setup_mp_logging_listener(self, *args):  # pylint: disable=unused-argument
         if self._setup_mp_logging_listener_:
-            log.setup_multiprocessing_logging_listener(
+            salt_log.setup_multiprocessing_logging_listener(
                 self.config,
                 self._get_mp_logging_listener_queue()
             )
@@ -878,14 +880,14 @@ class LogLevelMixIn(six.with_metaclass(MixInMeta, object)):
             # This will allow log file rotation on Windows
             # since only one process can own the log file
             # for log file rotation to work.
-            log.setup_multiprocessing_logging(
+            salt_log.setup_multiprocessing_logging(
                 self._get_mp_logging_listener_queue()
             )
             # Remove the temp logger and any other configured loggers since all of
             # our logging is going through the multiprocessing logging listener.
-            log.shutdown_temp_logging()
-            log.shutdown_console_logging()
-            log.shutdown_logfile_logging()
+            salt_log.shutdown_temp_logging()
+            salt_log.shutdown_console_logging()
+            salt_log.shutdown_logfile_logging()
 
     def __setup_console_logger_config(self, *args):  # pylint: disable=unused-argument
         # Since we're not going to be a daemon, setup the console logger
@@ -929,13 +931,13 @@ class LogLevelMixIn(six.with_metaclass(MixInMeta, object)):
         else:
             log_format = self.config['log_fmt_console']
 
-        log.setup_console_logger(
+        salt_log.setup_console_logger(
             self.config['log_level'],
             log_format=log_format,
             date_format=self.config['log_datefmt_console']
         )
         for name, level in six.iteritems(self.config.get('log_granular_levels', {})):
-            log.set_logger_level(name, level)
+            salt_log.set_logger_level(name, level)
 
 
 class RunUserMixin(six.with_metaclass(MixInMeta, object)):
@@ -974,7 +976,7 @@ class DaemonMixIn(six.with_metaclass(MixInMeta, object)):
                 try:
                     os.unlink(self.config['pidfile'])
                 except OSError as err:
-                    logging.getLogger(__name__).info(
+                    self.info(
                         'PIDfile could not be deleted: {0}'.format(
                             self.config['pidfile']
                         )
@@ -1003,7 +1005,7 @@ class DaemonMixIn(six.with_metaclass(MixInMeta, object)):
             if self._setup_mp_logging_listener_ is True:
                 # Stop the logging queue listener for the current process
                 # We'll restart it once forked
-                log.shutdown_multiprocessing_logging_listener(daemonizing=True)
+                salt_log.shutdown_multiprocessing_logging_listener(daemonizing=True)
 
             # Late import so logging works correctly
             salt.utils.process.daemonize()
@@ -1050,7 +1052,7 @@ class DaemonMixIn(six.with_metaclass(MixInMeta, object)):
             msg += ' received a SIGINT.'
         elif signum == signal.SIGTERM:
             msg += ' received a SIGTERM.'
-        logging.getLogger(__name__).warning('{0} Exiting.'.format(msg))
+        log.warning('{0} Exiting.'.format(msg))
         self.shutdown(exitmsg='{0} Exited.'.format(msg))
 
     def shutdown(self, exitcode=0, exitmsg=None):
@@ -2743,13 +2745,13 @@ class SaltCallOptionParser(six.with_metaclass(OptionParserMeta,
         role = opts.get('id')
         if not role:
             emsg = ("Missing role required to setup RAET SaltCaller.")
-            logging.getLogger(__name__).error(emsg + "\n")
+            log.error(emsg + "\n")
             raise ValueError(emsg)
 
         kind = opts.get('__role')  # application kind 'master', 'minion', etc
         if kind not in kinds.APPL_KINDS:
             emsg = ("Invalid application kind = '{0}' for RAET SaltCaller.".format(kind))
-            logging.getLogger(__name__).error(emsg + "\n")
+            log.error(emsg + "\n")
             raise ValueError(emsg)
 
         if kind in [kinds.APPL_KIND_NAMES[kinds.applKinds.minion],
@@ -2757,7 +2759,7 @@ class SaltCallOptionParser(six.with_metaclass(OptionParserMeta,
             lanename = "{0}_{1}".format(role, kind)
         else:
             emsg = ("Unsupported application kind '{0}' for RAET SaltCaller.".format(kind))
-            logging.getLogger(__name__).error(emsg + '\n')
+            log.error(emsg + '\n')
             raise ValueError(emsg)
 
         if kind == kinds.APPL_KIND_NAMES[kinds.applKinds.minion]:  # minion check
