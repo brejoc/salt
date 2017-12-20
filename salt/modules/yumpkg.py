@@ -1351,7 +1351,8 @@ def install(name=None,
 
     version_num = kwargs.get('version')
 
-    diff_attr = kwargs.get("diff_attr")
+    # we want to have at least 'version' in diff_attr.
+    diff_attr = kwargs.get("diff_attr", ['version'])
     old = list_pkgs(versions_as_list=False, attr=diff_attr) if not downloadonly else list_downloaded()
     # Use of __context__ means no duplicate work here, just accessing
     # information already in __context__ from the previous call to list_pkgs()
@@ -1522,13 +1523,9 @@ def install(name=None,
             cver = old_as_list.get(pkgname, [])
             if reinstall and cver:
                 for ver in cver:
-                    # if diff_attr was provided, version number is directly
-                    # in ver, otherwise its a dict.
-                    ver2 = ver['version'] if diff_attr else ver
-                    ver2 = norm_epoch(ver2, version_num)
                     if salt.utils.compare_versions(ver1=version_num,
                                                    oper='==',
-                                                   ver2=ver2,
+                                                   ver2=norm_epoch(ver['version'], version_num),
                                                    cmp_func=version_cmp):
                         # This version is already installed, so we need to
                         # reinstall.
@@ -1539,13 +1536,9 @@ def install(name=None,
                     to_install.append((pkgname, pkgstr))
                 else:
                     for ver in cver:
-                        # if diff_attr was provided, version number is directly
-                        # in ver, otherwise its a dict.
-                        ver2 = ver['version'] if diff_attr else ver
-                        ver2 = norm_epoch(ver2, version_num)
                         if salt.utils.compare_versions(ver1=version_num,
                                                        oper='>=',
-                                                       ver2=ver2,
+                                                       ver2=norm_epoch(ver['version'], version_num),
                                                        cmp_func=version_cmp):
                             to_install.append((pkgname, pkgstr))
                             break
