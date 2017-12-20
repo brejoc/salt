@@ -1635,7 +1635,7 @@ def install(name=None,
                 targets = ["--advisory={0}".format(t) for t in targets]
             cmd = []
             if salt.utils.systemd.has_scope(__context__) \
-                and __salt__['config.get']('systemd.scope', True):
+                    and __salt__['config.get']('systemd.scope', True):
                 cmd.extend(['systemd-run', '--scope'])
             cmd.extend([_yum(), '-y'])
             if _yum() == 'dnf':
@@ -1657,7 +1657,7 @@ def install(name=None,
         if targets:
             cmd = []
             if salt.utils.systemd.has_scope(__context__) \
-                and __salt__['config.get']('systemd.scope', True):
+                    and __salt__['config.get']('systemd.scope', True):
                 cmd.extend(['systemd-run', '--scope'])
             cmd.extend([_yum(), '-y'])
             _add_common_args(cmd)
@@ -1677,7 +1677,7 @@ def install(name=None,
         if targets:
             cmd = []
             if salt.utils.systemd.has_scope(__context__) \
-                and __salt__['config.get']('systemd.scope', True):
+                    and __salt__['config.get']('systemd.scope', True):
                 cmd.extend(['systemd-run', '--scope'])
             cmd.extend([_yum(), '-y'])
             _add_common_args(cmd)
@@ -2828,8 +2828,8 @@ def mod_repo(repo, basedir=None, **kwargs):
             content += '\n{0}={1}'.format(
                 line,
                 filerepos[stanza][line]
-                    if not isinstance(filerepos[stanza][line], bool)
-                    else _bool_to_str(filerepos[stanza][line])
+                if not isinstance(filerepos[stanza][line], bool)
+                else _bool_to_str(filerepos[stanza][line])
             )
         content += '\n{0}\n'.format(comments)
 
